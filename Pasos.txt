@@ -1,0 +1,61 @@
+* Tener instalado Docker
+
+* Crear una carpeta por cada container
+    * Crear el archivo "Dockerfile" (sin extension)
+    * Crear el archivo "requirements.txt"
+    * Completar el Dockerfile con las imagenes que necesito
+    * En requirements poner las dependencias del proyecto
+
+* Crear el archivo "docker-compose.yml" y configurar la version y los servicios
+    * A cada servicio darle un nombre, el path para buildear el Dockerfile y el puerto a exponer
+
+* Hacer docker-compose build
+
+* Hacer docker-compose up
+
+* ports y network_mode: host no son compatibles (ya no...)
+
+
+* Crear un contenerdor para mongo
+    Log in al container: 
+            docker exec -it mongodb bash
+
+    Autenticarse en mongo: 
+            mongosh -u admin -p password --authenticationDatabase firstdb
+            
+    Mongo URL 
+            mongodb://admin:password@127.0.0.1:27017/firstdb
+            mongodb://admin:password@127.0.0.1:27017
+
+* Starting from Mongodb version 6.0 mongo was replaced by mongosh
+
+
+************************************************************************************************
+Api nueva
+
+Registration of a user 0 tokens
+Each user gets 10 tokens
+Store a sentencce on our database for 1 token
+Retrieve his stored sentence on our database for 1 token
+
+
+* Agregamos los imports y la configuracion de la base de datos
+    mongosh -u admin -p password --authenticationDatabase sentencesDatabase
+
+* Creamos el recurso que vamos a usar para registrar (class Register(Resource))
+    * usamos bcrypt para hashear la password (Agregamos em requirements)
+        bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt())
+    * guardamos el usuario y la password hasheada
+
+* Agregamos el recurso a la Api
+    * api.add_resource(Register, "/register")
+
+* Creamos el recurso para agregar tokens (class Store(Resource))
+    * Verificar el login del user
+        Chequeo que coincida el hashing
+            bcrypt.hashpw(password.encode('utf8'), hashed_pw) == hashed_pw 
+    * Verificar que tenga token disponibles
+    * Guardar
+
+
+
