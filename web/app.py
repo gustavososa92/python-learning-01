@@ -133,7 +133,7 @@ class Detect(Resource):
         text1 = nlp(text1)
         text2 = nlp(text2)
         # Calculate de similiraty ratio, diff= 0 equals=1
-        ratio = text1.similiraty(text2)
+        ratio = text1.similarity(text2)
 
         users.update_one(
             {"username": username},
