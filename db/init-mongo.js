@@ -10,5 +10,19 @@ db.createUser({
       role: "readWrite",
       db: "sentencesDatabase",
     },
+    {
+      role: "readWrite",
+      db: "similarity",
+    },
   ],
 })
+
+use similarity
+
+db.users.insertOne(
+  {
+    "username":"admin",
+    "password":"admin",
+    "isAdmin": true
+  }
+)
