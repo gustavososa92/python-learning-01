@@ -15,14 +15,14 @@ db.createUser({
       db: "similarity",
     },
   ],
-})
+});
 
-use similarity
+newDb = db.getSiblingDB("similarity");
 
-db.users.insertOne(
+newDb.users.insertOne(
   {
     "username":"admin",
     "password":"admin",
     "isAdmin": true
   }
-)
+);

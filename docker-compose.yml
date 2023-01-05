@@ -3,13 +3,13 @@ version: "3"
 services:
   ################################
   mongodb:
-     build: ./db
+    build: ./db
     container_name: "mongodb"
     # restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: password
-      MONGO_INITDB_DATABASE: firstdb
+      MONGO_INITDB_DATABASE: similarity
     volumes:
       - ./db/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
       - ./db/mongo-volume:/data/db
