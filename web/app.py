@@ -30,6 +30,12 @@ def checkPostedData(data):
     return 200
 
 
+def checkPostedDataAdmin(data):
+    if 'admin_username' not in data or 'admin_pw' not in data:
+        return 400
+    return 200
+
+
 def userExists(username):
     return users.count_documents(
         {
@@ -83,7 +89,8 @@ class Register(Resource):
             {
                 "username": username,
                 "password": hashed_pw,
-                "tokens": 10
+                "tokens": 10,
+                "isAdmin": False
             }
         )
 
@@ -156,7 +163,7 @@ class Detect(Resource):
 class Refill(Resource):
     def post(self):
         data = request.get_json()
-        statusCode = checkPostedData(data)
+        statusCode = checkPostedDataAdmin(data)
 
         if statusCode != 200:
             retJson = {
@@ -210,4 +217,4 @@ api.add_resource(Refill, "/refill")
 
 
 if (__name__ == '__main__'):
-    app.run(host='0.0.0.0', port=4000, debug=True)
+    app.run(host='0.0.0.0', port=4000)
