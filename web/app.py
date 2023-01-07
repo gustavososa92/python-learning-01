@@ -14,6 +14,7 @@ api = Api(app)
 
 
 client = MongoClient("mongodb://admin:password@mongodb:27017")
+# client = MongoClient("mongodb://admin:password@localhost:27017")
 db = client["classify"]
 users = db["users"]
 
@@ -25,29 +26,30 @@ errorLogin = "Error: username or password doesnt match"
 errorAdminLogin = "Error: Admin username or password doesnt match"
 errorTokens = "Error: Not enough tokens"
 
-adminPassword = bcrypt.hashpw('admin'.encode('utf8'), bcrypt.gensalt())
 
-admin = users.find_one({"username": "admin"})
+def checkAdmin():
+    adminPassword = bcrypt.hashpw("admin".encode('utf8'), bcrypt.gensalt())
+    admin = users.find_one({"username": "admin"})
 
-if admin is None:
-    print("No admin, creating...")
-    users.insert_one(
-        {
-            "username": "admin",
-            "password": adminPassword,
-            "isAdmin": True
-        }
-    )
-elif 'password' not in admin:
-    print("No admin password, creating...")
-    users.update_one(
-        {"username": "admin"},
-        {"$set":
+    if admin is None:
+        print("No admin, creating...")
+        users.insert_one(
             {
-                "password": adminPassword
+                "username": "admin",
+                "password": adminPassword,
+                "isAdmin": True
             }
-         }
-    )
+        )
+    elif 'password' not in admin:
+        print("No admin password, creating...")
+        users.update_one(
+            {"username": "admin"},
+            {"$set":
+                {
+                    "password": adminPassword
+                }
+             }
+        )
 
 
 def checkPostedData(data):
@@ -104,6 +106,7 @@ def validateEnoughTokens(username):
 
 class Register(Resource):
     def post(self):
+        checkAdmin()
         data = request.get_json()
 
         retJson, error = checkPostedData(data)
@@ -153,14 +156,14 @@ class Classify(Resource):
         r = requests.get(url)
         retJson = {}
 
-        with open("temp.jpg", "wb")as f:
+        with open("temp.jpg", "wb") as f:
             f.write(r.content)
             proc = subprocess.Popen('python classify_image.py --model_dir=. --image_file=./temp.jpg',
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-            ret = proc.communicate()[0]
+            proc.communicate()[0]
             proc.wait()
-            with open("text.text", "r") as f:
-                retJson = json.load(f)
+            with open("text.text") as g:
+                retJson = json.load(g)
 
         users.update_one(
             {"username": username},
@@ -216,4 +219,4 @@ api.add_resource(Refill, "/refill")
 
 
 if (__name__ == '__main__'):
-    app.run(host='0.0.0.0', port=4000)
+    app.run(host='0.0.0.0', port=4000, debug=True)
