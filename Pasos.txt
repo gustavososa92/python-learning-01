@@ -19,6 +19,7 @@
 * Crear un contenerdor para mongo
     Log in al container: 
             docker exec -it mongodb bash
+            docker exec -it web_api_rest bash
 
     Autenticarse en mongo: 
             mongosh -u admin -p password --authenticationDatabase firstdb

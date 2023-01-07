@@ -13,8 +13,8 @@ app = Flask(__name__)
 api = Api(app)
 
 
-client = MongoClient("mongodb://admin:password@mongodb:27017")
-# client = MongoClient("mongodb://admin:password@localhost:27017")
+# client = MongoClient("mongodb://admin:password@mongodb:27017")
+client = MongoClient("mongodb://admin:password@localhost:27017")
 db = client["classify"]
 users = db["users"]
 
@@ -158,11 +158,11 @@ class Classify(Resource):
 
         with open("temp.jpg", "wb") as f:
             f.write(r.content)
-            proc = subprocess.Popen('python classify_image.py --model_dir=. --image_file=./temp.jpg',
+            proc = subprocess.Popen('python ./web/classify_image.py --model_dir=. --image_file=./temp.jpg',
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
             proc.communicate()[0]
             proc.wait()
-            with open("text.text") as g:
+            with open("text.txt","a+") as g:
                 retJson = json.load(g)
 
         users.update_one(
@@ -219,4 +219,5 @@ api.add_resource(Refill, "/refill")
 
 
 if (__name__ == '__main__'):
-    app.run(host='0.0.0.0', port=4000, debug=True)
+    # app.run(host='0.0.0.0', port=4000, debug=True)
+    app.run(host='localhost', port=4000)
