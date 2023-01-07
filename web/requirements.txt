@@ -1,7 +1,6 @@
-flask
+﻿flask
 flask_restful
 pymongo
 bcrypt
 numpy
-tensorflow
 requests
