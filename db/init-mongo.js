@@ -4,25 +4,16 @@ db.createUser({
   roles: [
     {
       role: "readWrite",
-      db: "firstdb",
-    },
-    {
-      role: "readWrite",
-      db: "sentencesDatabase",
-    },
-    {
-      role: "readWrite",
-      db: "similarity",
+      db: "classify",
     },
   ],
 });
 
-newDb = db.getSiblingDB("similarity");
+newDb = db.getSiblingDB("classify");
 
 newDb.users.insertOne(
   {
     "username":"admin",
-    "password":"admin",
     "isAdmin": true
   }
 );
