@@ -3,7 +3,9 @@ from flask_restful import Api, Resource
 from pymongo import MongoClient
 
 import bcrypt
-import spacy
+import requests
+import subprocess
+import json
 
 
 app = Flask(__name__)
@@ -12,7 +14,7 @@ api = Api(app)
 
 
 client = MongoClient("mongodb://admin:password@mongodb:27017")
-db = client["similarity"]
+db = client["classify"]
 users = db["users"]
 
 
@@ -23,17 +25,39 @@ errorLogin = "Error: username or password doesnt match"
 errorAdminLogin = "Error: Admin username or password doesnt match"
 errorTokens = "Error: Not enough tokens"
 
+adminPassword = bcrypt.hashpw('admin'.encode('utf8'), bcrypt.gensalt())
+
+admin = users.find_one({"username": "admin"})
+
+if admin is None:
+    print("No admin, creating...")
+    users.insert_one(
+        {
+            "username": "admin",
+            "password": adminPassword,
+            "isAdmin": True
+        }
+    )
+elif 'password' not in admin:
+    print("No admin password, creating...")
+    users.update_one(
+        {"username": "admin"},
+        {"$set":
+            {
+                "password": adminPassword
+            }
+         }
+    )
+
 
 def checkPostedData(data):
-    if 'username' not in data or 'password' not in data:
-        return 400
-    return 200
+    error = 'username' not in data or 'password' not in data
+    return generateRetJson(400, errorMissingParam), error
 
 
 def checkPostedDataAdmin(data):
-    if 'admin_username' not in data or 'admin_pw' not in data:
-        return 400
-    return 200
+    error = 'admin_username' not in data or 'admin_pw' not in data
+    return generateRetJson(400, errorMissingParam), error
 
 
 def userExists(username):
@@ -46,7 +70,8 @@ def userExists(username):
 
 def login(username, password):
     hashed_pw = users.find_one({"username": username})['password']
-    return bcrypt.hashpw(password.encode('utf8'), hashed_pw) == hashed_pw
+    loginOk = bcrypt.hashpw(password.encode('utf8'), hashed_pw) == hashed_pw
+    return generateRetJson(401, errorLogin), not loginOk
 
 
 def getTokens(username):
@@ -58,30 +83,38 @@ def loginAdmin(username, password):
     hashed_pw = user['password']
     isAdmin = user['isAdmin']
 
-    return bcrypt.hashpw(password.encode('utf8'), hashed_pw) == hashed_pw and isAdmin
+    loginAdminOk = bcrypt.hashpw(password.encode(
+        'utf8'), hashed_pw) == hashed_pw and isAdmin
+
+    return generateRetJson(401, errorAdminLogin), not loginAdminOk
+
+
+def generateRetJson(code, message):
+    return {
+        'message': message,
+        'statusCode': code
+    }
+
+
+def validateEnoughTokens(username):
+    tokens = getTokens(username)
+    error = tokens < 1
+    return tokens, generateRetJson(400, errorTokens), error
 
 
 class Register(Resource):
     def post(self):
         data = request.get_json()
-        statusCode = checkPostedData(data)
 
-        if statusCode != 200:
-            retJson = {
-                'message': errorMissingParam,
-                'statusCode': statusCode
-            }
+        retJson, error = checkPostedData(data)
+        if error:
             return jsonify(retJson)
 
         username = data['username']
         password = data['password']
 
         if userExists(username):
-            retJson = {
-                'message': errorUserExists,
-                'statusCode': 400
-            }
-            return jsonify(retJson)
+            return jsonify(generateRetJson(400, errorUserExists))
 
         hashed_pw = bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt())
 
@@ -94,53 +127,40 @@ class Register(Resource):
             }
         )
 
-        retJson = {
-            'message': "Successfully registered",
-            'statusCode': 200
-        }
-        return jsonify(retJson)
+        return jsonify(generateRetJson(200, "Successfully registered"))
 
 
-class Detect(Resource):
+class Classify(Resource):
     def post(self):
         data = request.get_json()
-        statusCode = checkPostedData(data)
 
-        if statusCode != 200:
-            retJson = {
-                'message': errorMissingParam,
-                'statusCode': statusCode
-            }
+        retJson, error = checkPostedData(data)
+        if error:
             return jsonify(retJson)
 
         username = data['username']
         password = data['password']
-        text1 = data['text1']
-        text2 = data['text2']
+        url = data['url']
 
-        loginOK = login(username, password)
-        if not loginOK:
-            retJson = {
-                'message': errorLogin,
-                'statusCode': 401
-            }
+        retJson, error = login(username, password)
+        if error:
             return jsonify(retJson)
 
-        tokens = getTokens(username)
-        if tokens < 1:
-            retJson = {
-                'message': errorTokens,
-                'statusCode': 400
-            }
+        tokens, retJson, error = validateEnoughTokens(username)
+        if error:
             return jsonify(retJson)
 
-        # Natural language processor
-        nlp = spacy.load("en_core_web_sm")
-        # Convert each text
-        text1 = nlp(text1)
-        text2 = nlp(text2)
-        # Calculate de similiraty ratio, diff= 0 equals=1
-        ratio = text1.similarity(text2)
+        r = requests.get(url)
+        retJson = {}
+
+        with open("temp.jpg", "wb")as f:
+            f.write(r.content)
+            proc = subprocess.Popen('python classify_image.py --model_dir=. --image_file=./temp.jpg',
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+            ret = proc.communicate()[0]
+            proc.wait()
+            with open("text.text", "r") as f:
+                retJson = json.load(f)
 
         users.update_one(
             {"username": username},
@@ -152,24 +172,15 @@ class Detect(Resource):
             }
         )
 
-        retJson = {
-            'similarity': ratio,
-            'message': "Successfully Calculated",
-            'statusCode': 200
-        }
         return jsonify(retJson)
 
 
 class Refill(Resource):
     def post(self):
         data = request.get_json()
-        statusCode = checkPostedDataAdmin(data)
 
-        if statusCode != 200:
-            retJson = {
-                'message': errorMissingParam,
-                'statusCode': statusCode
-            }
+        retJson, error = checkPostedDataAdmin(data)
+        if error:
             return jsonify(retJson)
 
         adminUsername = data['admin_username']
@@ -177,20 +188,12 @@ class Refill(Resource):
         refillAmount = data['refill']
         userToRefill = data['user']
 
-        loginOK = loginAdmin(adminUsername, adminPass)
-        if not loginOK:
-            retJson = {
-                'message': errorAdminLogin,
-                'statusCode': 401
-            }
+        retJson, error = loginAdmin(adminUsername, adminPass)
+        if error:
             return jsonify(retJson)
 
         if not userExists(userToRefill):
-            retJson = {
-                'message': errorUserNotExists,
-                'statusCode': 404
-            }
-            return jsonify(retJson)
+            return jsonify(generateRetJson(404, errorUserNotExists))
 
         tokens = getTokens(userToRefill)
 
@@ -204,15 +207,11 @@ class Refill(Resource):
             }
         )
 
-        retJson = {
-            'message': "Successfully refilled",
-            'statusCode': 200
-        }
-        return jsonify(retJson)
+        return jsonify(generateRetJson(200, "Successfully refilled"))
 
 
 api.add_resource(Register, "/register")
-api.add_resource(Detect, "/detect")
+api.add_resource(Classify, "/classify")
 api.add_resource(Refill, "/refill")
 
 
