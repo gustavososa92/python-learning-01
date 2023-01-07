@@ -162,8 +162,8 @@ class Classify(Resource):
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
             proc.communicate()[0]
             proc.wait()
-            with open("text.txt","a+") as g:
-                retJson = json.load(g)
+        with open("text.txt", "r", encoding='utf8') as f:
+            retJson = json.load(f)
 
         users.update_one(
             {"username": username},

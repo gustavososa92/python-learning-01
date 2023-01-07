@@ -132,3 +132,7 @@ dmypy.json
 # Mongo db
 **/db/mongo-volume/**
 web/inception-2015-12-05.tgz
+inception-2015-12-05.tgz
+classify_image_graph_def.pb
+temp.jpg
+text.txt
